@@ -16,88 +16,52 @@ interface FishItem {
   height: number;
 }
 
-// Realistic silver fish (herring-like)
-const RealisticFish = ({ position, collected }: { 
+// Simplified fish component - no pointLight for performance
+const SimpleFish = ({ position, collected }: { 
   position: [number, number, number]; 
   collected: boolean;
 }) => {
-  const meshRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const scaleRef = useRef(1);
-  const tailWiggle = useRef(0);
+  const rotationRef = useRef(0);
 
   useFrame((_, delta) => {
-    if (!meshRef.current) return;
+    if (!groupRef.current) return;
     
-    // Rotate and bob
-    meshRef.current.rotation.y += delta * 1.5;
-    meshRef.current.position.y = position[1] + Math.sin(Date.now() * 0.004) * 0.08;
+    rotationRef.current += delta * 1.8;
+    groupRef.current.rotation.y = rotationRef.current;
+    groupRef.current.position.y = position[1] + Math.sin(Date.now() * 0.003) * 0.06;
     
-    // Tail wiggle tracking
-    tailWiggle.current = Math.sin(Date.now() * 0.015) * 0.3;
-    
-    // Collection animation
     if (collected) {
-      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.25);
+      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.2);
     }
-    meshRef.current.scale.setScalar(scaleRef.current);
+    groupRef.current.scale.setScalar(scaleRef.current);
   });
 
   if (collected && scaleRef.current < 0.05) return null;
 
   return (
-    <group ref={meshRef} position={position}>
-      {/* Main body - elongated fish shape */}
+    <group ref={groupRef} position={position}>
+      {/* Main body */}
       <mesh>
-        <capsuleGeometry args={[0.08, 0.18, 8, 12]} />
-        <meshStandardMaterial 
-          color="#a0b0c0" 
-          roughness={0.3} 
-          metalness={0.4}
-        />
+        <capsuleGeometry args={[0.07, 0.16, 6, 8]} />
+        <meshStandardMaterial color="#a0b8c8" roughness={0.3} metalness={0.35} />
       </mesh>
-      
-      {/* Silver belly */}
-      <mesh position={[0, -0.02, 0.04]}>
-        <capsuleGeometry args={[0.05, 0.14, 6, 10]} />
-        <meshStandardMaterial 
-          color="#d0dce8" 
-          roughness={0.25} 
-          metalness={0.5}
-        />
+      {/* Belly */}
+      <mesh position={[0, -0.02, 0.03]}>
+        <capsuleGeometry args={[0.045, 0.12, 4, 6]} />
+        <meshStandardMaterial color="#d0dce8" roughness={0.25} metalness={0.4} />
       </mesh>
-      
-      {/* Back (darker) */}
-      <mesh position={[0, 0.03, -0.02]}>
-        <capsuleGeometry args={[0.04, 0.12, 6, 8]} />
-        <meshStandardMaterial 
-          color="#607080" 
-          roughness={0.4} 
-          metalness={0.3}
-        />
+      {/* Tail */}
+      <mesh position={[0, 0, 0.14]} rotation={[0, 0, Math.PI / 4]}>
+        <coneGeometry args={[0.05, 0.08, 3]} />
+        <meshStandardMaterial color="#8090a0" roughness={0.4} />
       </mesh>
-      
-      {/* Tail fin */}
-      <group position={[0, 0, 0.16]}>
-        <mesh rotation={[0, 0, Math.PI / 4]}>
-          <coneGeometry args={[0.06, 0.1, 4]} />
-          <meshStandardMaterial color="#8090a0" roughness={0.4} metalness={0.3} />
-        </mesh>
-      </group>
-      
-      {/* Dorsal fin */}
-      <mesh position={[0, 0.08, 0]} rotation={[0, 0, 0]}>
-        <coneGeometry args={[0.02, 0.05, 3]} />
-        <meshStandardMaterial color="#708090" roughness={0.4} />
-      </mesh>
-      
       {/* Eye */}
-      <mesh position={[0.05, 0.02, -0.08]}>
-        <sphereGeometry args={[0.018, 8, 8]} />
+      <mesh position={[0.04, 0.02, -0.07]}>
+        <sphereGeometry args={[0.015, 6, 6]} />
         <meshStandardMaterial color="#101010" />
       </mesh>
-      
-      {/* Subtle glow for visibility */}
-      <pointLight color="#90b0d0" intensity={0.3} distance={1.5} />
     </group>
   );
 };
@@ -202,7 +166,7 @@ export const Fish = () => {
         const pos: [number, number, number] = [x, fish.height, z];
         
         return (
-          <RealisticFish 
+          <SimpleFish 
             key={fish.id} 
             position={pos} 
             collected={fish.collected}

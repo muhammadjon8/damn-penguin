@@ -1,40 +1,29 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Thought bubble phrases organized by distance thresholds
+// Thought bubble phrases
 const THOUGHT_PHRASES = {
   early: [
     "The colony feels so far away...",
     "Why did I leave?",
     "Just a little further...",
-    "The wind is cold today.",
-    "I can hear them still... maybe.",
   ],
   mid: [
     "These mountains... they call to me.",
     "Maybe just a little further...",
     "I can almost see something...",
-    "Was there ever a reason?",
-    "The ice remembers my footsteps.",
-    "Each step takes me somewhere.",
   ],
   late: [
     "The horizon never gets closer.",
-    "But what am I looking for?",
     "Perhaps the journey is the answer.",
     "I've come too far to stop now.",
-    "The mountains whisper secrets.",
-    "Somewhere ahead... something waits.",
   ],
   existential: [
     "Does the destination matter?",
-    "Maybe I was always meant to wander.",
-    "The silence speaks louder here.",
     "In solitude, I find myself.",
-    "Every ending is a new beginning.",
     "But why...?",
   ],
 };
@@ -43,15 +32,11 @@ const THOUGHT_PHRASES = {
 export const MEMORY_FRAGMENTS = [
   "I remember warmth... a huddle of family.",
   "The sound of waves crashing against ice.",
-  "A fish shared with a friend, long ago.",
   "Mother's call echoing through the storm.",
   "The first time I saw the aurora.",
-  "Dancing on the ice, carefree.",
-  "Stars that seemed close enough to touch.",
-  "A promise made under the midnight sun.",
 ];
 
-// 3D Thought Bubble that appears above penguin
+// 3D Thought Bubble - simplified
 export const ThoughtBubble3D = () => {
   const groupRef = useRef<THREE.Group>(null);
   const { showThought, gameState } = useGameStore();
@@ -61,35 +46,27 @@ export const ThoughtBubble3D = () => {
     if (!groupRef.current) return;
     
     const targetScale = showThought && gameState === 'playing' ? 1 : 0;
-    scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, delta * 5);
+    scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, delta * 4);
     groupRef.current.scale.setScalar(scaleRef.current);
     
-    // Float animation
     if (showThought) {
-      groupRef.current.position.y = 2 + Math.sin(Date.now() * 0.002) * 0.1;
+      groupRef.current.position.y = 2 + Math.sin(Date.now() * 0.002) * 0.08;
     }
   });
   
   return (
     <group ref={groupRef} position={[0, 2, 0]}>
-      {/* Main bubble */}
       <mesh>
-        <sphereGeometry args={[0.5, 16, 16]} />
-        <meshStandardMaterial 
-          color="#ffffff" 
-          transparent 
-          opacity={0.85} 
-          roughness={0.3}
-        />
+        <sphereGeometry args={[0.4, 12, 12]} />
+        <meshStandardMaterial color="#ffffff" transparent opacity={0.8} roughness={0.3} />
       </mesh>
-      {/* Smaller connecting bubbles */}
-      <mesh position={[-0.3, -0.4, 0]}>
-        <sphereGeometry args={[0.15, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.8} />
+      <mesh position={[-0.25, -0.35, 0]}>
+        <sphereGeometry args={[0.12, 8, 8]} />
+        <meshStandardMaterial color="#ffffff" transparent opacity={0.75} />
       </mesh>
-      <mesh position={[-0.2, -0.6, 0]}>
-        <sphereGeometry args={[0.08, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.7} />
+      <mesh position={[-0.15, -0.5, 0]}>
+        <sphereGeometry args={[0.06, 6, 6]} />
+        <meshStandardMaterial color="#ffffff" transparent opacity={0.6} />
       </mesh>
     </group>
   );
@@ -101,51 +78,40 @@ export const ThoughtOverlay = () => {
   
   return (
     <>
-      {/* Regular thought bubble */}
       <AnimatePresence>
         {showThought && thoughtText && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.8 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.4 }}
             className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none"
           >
-            <div className="glass-panel rounded-2xl px-6 py-4 max-w-md mx-4">
-              <p className="text-foreground/90 text-center text-lg md:text-xl font-light italic">
+            <div className="glass-panel rounded-2xl px-5 py-3 max-w-sm mx-4">
+              <p className="text-foreground/90 text-center text-base md:text-lg font-light italic">
                 "{thoughtText}"
               </p>
-              <div className="flex justify-center mt-2 gap-1">
-                <span className="w-1.5 h-1.5 bg-accent/40 rounded-full" />
-                <span className="w-1.5 h-1.5 bg-accent/30 rounded-full" />
-                <span className="w-1.5 h-1.5 bg-accent/20 rounded-full" />
-              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
       
-      {/* Memory fragment (special collectible) */}
       <AnimatePresence>
         {showMemory && memoryText && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.2 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.6 }}
             className="absolute top-1/3 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="relative">
-              {/* Ethereal glow effect */}
-              <div className="absolute inset-0 bg-gradient-radial from-fish/30 to-transparent blur-xl -z-10 scale-150" />
-              <div className="bg-gradient-to-b from-background/80 to-secondary/60 backdrop-blur-md rounded-2xl px-8 py-6 max-w-lg mx-4 border border-fish/40">
-                <p className="text-accent/60 text-xs uppercase tracking-widest text-center mb-2">
-                  ✧ Memory Fragment ✧
-                </p>
-                <p className="text-foreground text-center text-xl md:text-2xl font-light">
-                  {memoryText}
-                </p>
-              </div>
+            <div className="bg-gradient-to-b from-background/80 to-secondary/60 backdrop-blur-md rounded-2xl px-6 py-5 max-w-md mx-4 border border-fish/40">
+              <p className="text-accent/60 text-xs uppercase tracking-widest text-center mb-2">
+                ✧ Memory Fragment ✧
+              </p>
+              <p className="text-foreground text-center text-lg md:text-xl font-light">
+                {memoryText}
+              </p>
             </div>
           </motion.div>
         )}
@@ -154,21 +120,17 @@ export const ThoughtOverlay = () => {
   );
 };
 
-// Flashback vignette system
+// Flashback vignette - simplified
 export const FlashbackVignette = () => {
   const { distance, gameState } = useGameStore();
-  const [showFlashback, setShowFlashback] = useState(false);
-  const [flashbackContent, setFlashbackContent] = useState<string | null>(null);
   const shownMilestones = useRef<Set<number>>(new Set());
+  const flashbackRef = useRef<{ show: boolean; text: string }>({ show: false, text: '' });
   
   const flashbackMilestones = useMemo(() => ({
-    1000: { type: 'colony', text: 'The colony... so far behind now.' },
-    3000: { type: 'sounds', text: 'Echoes of familiar calls...' },
-    5000: { type: 'aurora', text: 'The lights dance with purpose.' },
-    7500: { type: 'mountains', text: 'The mountains... closer? Or just a dream.' },
-    10000: { type: 'hope', text: 'Something awaits. I can feel it.' },
-    15000: { type: 'determination', text: 'I will not stop. I cannot stop.' },
-    20000: { type: 'transcendence', text: 'Beyond distance lies understanding.' },
+    1000: 'The colony... so far behind now.',
+    3000: 'Echoes of familiar calls...',
+    5000: 'The lights dance with purpose.',
+    10000: 'Something awaits. I can feel it.',
   }), []);
   
   useEffect(() => {
@@ -177,41 +139,40 @@ export const FlashbackVignette = () => {
       return;
     }
     
-    Object.entries(flashbackMilestones).forEach(([milestone, content]) => {
+    Object.entries(flashbackMilestones).forEach(([milestone, text]) => {
       const m = parseInt(milestone);
-      if (distance >= m && distance < m + 100 && !shownMilestones.current.has(m)) {
+      if (distance >= m && distance < m + 80 && !shownMilestones.current.has(m)) {
         shownMilestones.current.add(m);
-        setFlashbackContent(content.text);
-        setShowFlashback(true);
-        
-        setTimeout(() => setShowFlashback(false), 4000);
+        flashbackRef.current = { show: true, text };
+        setTimeout(() => {
+          flashbackRef.current = { show: false, text: '' };
+        }, 3500);
       }
     });
-  }, [distance, gameState, flashbackMilestones]);
+  }, [Math.floor(distance / 50), gameState, flashbackMilestones]);
+  
+  const { show, text } = flashbackRef.current;
   
   return (
     <AnimatePresence>
-      {showFlashback && flashbackContent && (
+      {show && text && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.5 }}
+          transition={{ duration: 1.2 }}
           className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center"
         >
-          {/* Vignette overlay */}
-          <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-background/70" />
-          
-          {/* Content */}
+          <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-background/60" />
           <motion.div
-            initial={{ y: 30, opacity: 0 }}
+            initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            transition={{ duration: 1, delay: 0.5 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
             className="text-center z-10"
           >
-            <p className="melancholic-text text-3xl md:text-5xl title-gradient max-w-xl mx-4">
-              {flashbackContent}
+            <p className="melancholic-text text-2xl md:text-4xl title-gradient max-w-md mx-4">
+              {text}
             </p>
           </motion.div>
         </motion.div>
@@ -220,50 +181,43 @@ export const FlashbackVignette = () => {
   );
 };
 
-// Colony silhouette that appears at distance milestones
+// Colony silhouette - simplified
 export const ColonySilhouette = () => {
   const groupRef = useRef<THREE.Group>(null);
   const { distance, gameState } = useGameStore();
-  const [visible, setVisible] = useState(false);
+  const opacityRef = useRef(0);
   
-  useEffect(() => {
-    if (distance >= 1000 && distance < 1200 && gameState === 'playing') {
-      setVisible(true);
-    } else {
-      setVisible(false);
-    }
-  }, [distance, gameState]);
-  
-  useFrame(() => {
-    if (!groupRef.current) return;
-    
-    const targetOpacity = visible ? 0.3 : 0;
-    groupRef.current.children.forEach(child => {
-      if (child instanceof THREE.Mesh) {
-        const mat = child.material as THREE.MeshBasicMaterial;
-        mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOpacity, 0.02);
-      }
-    });
-  });
-  
-  // Create penguin silhouettes
   const penguins = useMemo(() => {
     const p = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 12; i++) {
       p.push({
-        x: (Math.random() - 0.5) * 30,
-        z: -80 - Math.random() * 20,
-        scale: 0.3 + Math.random() * 0.2,
+        x: (Math.random() - 0.5) * 25,
+        z: -75 - Math.random() * 15,
+        scale: 0.25 + Math.random() * 0.15,
       });
     }
     return p;
   }, []);
   
+  useFrame(() => {
+    if (!groupRef.current) return;
+    
+    const visible = distance >= 1000 && distance < 1150 && gameState === 'playing';
+    const targetOpacity = visible ? 0.25 : 0;
+    opacityRef.current = THREE.MathUtils.lerp(opacityRef.current, targetOpacity, 0.02);
+    
+    groupRef.current.children.forEach(child => {
+      if (child instanceof THREE.Mesh) {
+        (child.material as THREE.MeshBasicMaterial).opacity = opacityRef.current;
+      }
+    });
+  });
+  
   return (
     <group ref={groupRef}>
       {penguins.map((penguin, i) => (
         <mesh key={i} position={[penguin.x, penguin.scale * 0.5, penguin.z]}>
-          <capsuleGeometry args={[penguin.scale * 0.3, penguin.scale, 4, 8]} />
+          <capsuleGeometry args={[penguin.scale * 0.3, penguin.scale, 4, 6]} />
           <meshBasicMaterial color="#1a1a2e" transparent opacity={0} />
         </mesh>
       ))}
@@ -271,119 +225,107 @@ export const ColonySilhouette = () => {
   );
 };
 
-// Shooting star easter egg
+// Shooting star - simplified
 export const ShootingStar = () => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const trailRef = useRef<THREE.Mesh>(null);
   const { timeOfDay, gameState } = useGameStore();
-  const activeRef = useRef(false);
-  const positionRef = useRef({ x: 0, y: 0 });
-  const timeRef = useRef(0);
+  const stateRef = useRef({ active: false, x: 0, y: 0, time: 0 });
   
   useFrame((_, delta) => {
-    if (!meshRef.current || !trailRef.current || gameState !== 'playing') return;
+    if (!meshRef.current || gameState !== 'playing') return;
     
-    // Random chance to spawn during night
-    if (!activeRef.current && timeOfDay === 'night' && Math.random() < 0.001) {
-      activeRef.current = true;
-      positionRef.current = { x: (Math.random() - 0.5) * 100, y: 30 + Math.random() * 20 };
-      timeRef.current = 0;
+    const state = stateRef.current;
+    
+    // Rare chance during night
+    if (!state.active && timeOfDay === 'night' && Math.random() < 0.0008) {
+      state.active = true;
+      state.x = (Math.random() - 0.5) * 80;
+      state.y = 30 + Math.random() * 15;
+      state.time = 0;
     }
     
-    if (activeRef.current) {
-      timeRef.current += delta;
+    if (state.active) {
+      state.time += delta;
+      meshRef.current.position.set(
+        state.x + state.time * 25,
+        state.y - state.time * 12,
+        -50
+      );
       
-      // Move diagonally
-      meshRef.current.position.x = positionRef.current.x + timeRef.current * 30;
-      meshRef.current.position.y = positionRef.current.y - timeRef.current * 15;
-      meshRef.current.position.z = -50;
-      
-      trailRef.current.position.copy(meshRef.current.position);
-      trailRef.current.position.x -= 2;
-      trailRef.current.position.y += 1;
-      
-      // Fade out
-      const opacity = Math.max(0, 1 - timeRef.current * 0.5);
+      const opacity = Math.max(0, 1 - state.time * 0.4);
       (meshRef.current.material as THREE.MeshBasicMaterial).opacity = opacity;
-      (trailRef.current.material as THREE.MeshBasicMaterial).opacity = opacity * 0.5;
       
-      if (timeRef.current > 3) {
-        activeRef.current = false;
+      if (state.time > 2.5) {
+        state.active = false;
         (meshRef.current.material as THREE.MeshBasicMaterial).opacity = 0;
-        (trailRef.current.material as THREE.MeshBasicMaterial).opacity = 0;
       }
     }
   });
   
   return (
-    <group>
-      <mesh ref={meshRef} position={[0, -100, -50]}>
-        <sphereGeometry args={[0.3, 8, 8]} />
-        <meshBasicMaterial color="#fffef0" transparent opacity={0} />
-      </mesh>
-      <mesh ref={trailRef} position={[0, -100, -50]} rotation={[0, 0, Math.PI / 4]}>
-        <planeGeometry args={[4, 0.3]} />
-        <meshBasicMaterial color="#fffef0" transparent opacity={0} />
-      </mesh>
-    </group>
+    <mesh ref={meshRef} position={[0, -100, -50]}>
+      <sphereGeometry args={[0.25, 6, 6]} />
+      <meshBasicMaterial color="#fffef0" transparent opacity={0} />
+    </mesh>
   );
 };
 
-// Distant penguin easter egg (very rare)
+// Distant penguin - simplified
 export const DistantPenguin = () => {
-  const meshRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const { distance, gameState } = useGameStore();
-  const [visible, setVisible] = useState(false);
-  const positionRef = useRef({ x: 0, z: 0 });
+  const stateRef = useRef({ visible: false, x: 0, z: 0, timer: 0 });
   
-  useEffect(() => {
-    // Very rare chance when far enough
-    if (distance > 5000 && gameState === 'playing' && !visible && Math.random() < 0.0005) {
-      const side = Math.random() > 0.5 ? 1 : -1;
-      positionRef.current = { x: side * (15 + Math.random() * 10), z: -60 - Math.random() * 20 };
-      setVisible(true);
-      setTimeout(() => setVisible(false), 8000);
-    }
-  }, [Math.floor(distance / 100), gameState]); // Check every 100m
-  
-  useFrame(() => {
-    if (!meshRef.current) return;
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
     
-    const targetOpacity = visible ? 0.4 : 0;
-    meshRef.current.children.forEach(child => {
+    const state = stateRef.current;
+    
+    // Very rare chance when far
+    if (!state.visible && distance > 5000 && gameState === 'playing' && Math.random() < 0.0003) {
+      const side = Math.random() > 0.5 ? 1 : -1;
+      state.visible = true;
+      state.x = side * (12 + Math.random() * 8);
+      state.z = -55 - Math.random() * 15;
+      state.timer = 0;
+    }
+    
+    if (state.visible) {
+      state.timer += delta;
+      if (state.timer > 7) state.visible = false;
+    }
+    
+    const targetOpacity = state.visible ? 0.3 : 0;
+    groupRef.current.position.set(state.x, 0, state.z);
+    
+    groupRef.current.children.forEach(child => {
       if (child instanceof THREE.Mesh) {
         const mat = child.material as THREE.MeshStandardMaterial;
-        mat.opacity = THREE.MathUtils.lerp(mat.opacity || 0, targetOpacity, 0.02);
+        mat.opacity = THREE.MathUtils.lerp(mat.opacity || 0, targetOpacity, 0.03);
         mat.transparent = true;
       }
     });
   });
   
   return (
-    <group ref={meshRef} position={[positionRef.current.x, 0, positionRef.current.z]}>
-      {/* Simple penguin silhouette */}
-      <mesh position={[0, 0.4, 0]}>
-        <capsuleGeometry args={[0.2, 0.3, 4, 8]} />
+    <group ref={groupRef}>
+      <mesh position={[0, 0.35, 0]}>
+        <capsuleGeometry args={[0.18, 0.25, 4, 6]} />
         <meshStandardMaterial color="#1a1a2e" transparent opacity={0} />
       </mesh>
-      <mesh position={[0, 0.7, 0]}>
-        <sphereGeometry args={[0.15, 8, 8]} />
+      <mesh position={[0, 0.65, 0]}>
+        <sphereGeometry args={[0.12, 6, 6]} />
         <meshStandardMaterial color="#1a1a2e" transparent opacity={0} />
       </mesh>
     </group>
   );
 };
 
-// Hook to manage narrative triggers
+// Narrative system hook - optimized
 export const useNarrativeSystem = () => {
-  const { 
-    distance, 
-    gameState, 
-    triggerThought,
-  } = useGameStore();
-  
+  const { distance, gameState, triggerThought } = useGameStore();
   const lastThoughtDistance = useRef(0);
-  const thoughtInterval = useRef(500 + Math.random() * 300); // 500-800m
+  const thoughtInterval = useRef(600);
   
   useEffect(() => {
     if (gameState !== 'playing') {
@@ -393,22 +335,16 @@ export const useNarrativeSystem = () => {
     
     if (distance - lastThoughtDistance.current >= thoughtInterval.current) {
       lastThoughtDistance.current = distance;
-      thoughtInterval.current = 500 + Math.random() * 300;
+      thoughtInterval.current = 550 + Math.random() * 250;
       
-      // Select phrase based on distance
       let phrasePool: string[];
-      if (distance < 2000) {
-        phrasePool = THOUGHT_PHRASES.early;
-      } else if (distance < 5000) {
-        phrasePool = THOUGHT_PHRASES.mid;
-      } else if (distance < 10000) {
-        phrasePool = THOUGHT_PHRASES.late;
-      } else {
-        phrasePool = THOUGHT_PHRASES.existential;
-      }
+      if (distance < 2000) phrasePool = THOUGHT_PHRASES.early;
+      else if (distance < 5000) phrasePool = THOUGHT_PHRASES.mid;
+      else if (distance < 10000) phrasePool = THOUGHT_PHRASES.late;
+      else phrasePool = THOUGHT_PHRASES.existential;
       
       const phrase = phrasePool[Math.floor(Math.random() * phrasePool.length)];
       triggerThought(phrase);
     }
-  }, [distance, gameState, triggerThought]);
+  }, [Math.floor(distance / 100), gameState, triggerThought]);
 };
