@@ -4,6 +4,7 @@ import { GameUI } from '@/components/game/GameUI';
 import { GameOver } from '@/components/game/GameOver';
 import { ThoughtOverlay, FlashbackVignette } from '@/components/game/NarrativeSystem';
 import { DestinationCounter } from '@/components/game/LandmarkSystem';
+import { AudioSystem } from '@/components/game/AudioSystem';
 import { useGameStore } from '@/store/gameStore';
 import { useControls } from '@/hooks/useControls';
 
@@ -15,6 +16,9 @@ const Index = () => {
 
   return (
     <div className={`relative w-full h-screen overflow-hidden winter-gradient ${isSlowMotion ? 'slow-motion-active' : ''}`}>
+      {/* Audio System */}
+      <AudioSystem />
+      
       {/* 3D Scene */}
       <GameScene />
       

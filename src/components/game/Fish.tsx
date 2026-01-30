@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
+import { playCollectSound } from './AudioSystem';
 
 const LANE_WIDTH = 2;
 const SPAWN_DISTANCE = -60;
@@ -174,6 +175,7 @@ export const Fish = () => {
             pendingActionsRef.current.push(() => {
               addScore(10);
               addCombo();
+              playCollectSound();
             });
             return { ...fish, position: newPos, collected: true };
           }
