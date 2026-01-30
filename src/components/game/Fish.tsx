@@ -15,24 +15,28 @@ interface FishItem {
   height: number;
 }
 
-// Single fish collectible
-const FishMesh = ({ position, collected }: { 
+// Realistic silver fish (herring-like)
+const RealisticFish = ({ position, collected }: { 
   position: [number, number, number]; 
   collected: boolean;
 }) => {
   const meshRef = useRef<THREE.Group>(null);
   const scaleRef = useRef(1);
+  const tailWiggle = useRef(0);
 
   useFrame((_, delta) => {
     if (!meshRef.current) return;
     
     // Rotate and bob
-    meshRef.current.rotation.y += delta * 2;
-    meshRef.current.position.y = position[1] + Math.sin(Date.now() * 0.003) * 0.1;
+    meshRef.current.rotation.y += delta * 1.5;
+    meshRef.current.position.y = position[1] + Math.sin(Date.now() * 0.004) * 0.08;
+    
+    // Tail wiggle tracking
+    tailWiggle.current = Math.sin(Date.now() * 0.015) * 0.3;
     
     // Collection animation
     if (collected) {
-      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.3);
+      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.25);
     }
     meshRef.current.scale.setScalar(scaleRef.current);
   });
@@ -41,23 +45,58 @@ const FishMesh = ({ position, collected }: {
 
   return (
     <group ref={meshRef} position={position}>
-      {/* Fish body */}
+      {/* Main body - elongated fish shape */}
       <mesh>
-        <capsuleGeometry args={[0.12, 0.2, 4, 8]} />
-        <meshStandardMaterial color="#ff8c42" roughness={0.4} metalness={0.1} />
+        <capsuleGeometry args={[0.08, 0.18, 8, 12]} />
+        <meshStandardMaterial 
+          color="#a0b0c0" 
+          roughness={0.3} 
+          metalness={0.4}
+        />
       </mesh>
-      {/* Tail */}
-      <mesh position={[0, 0, 0.2]} rotation={[0, 0, Math.PI / 4]}>
-        <coneGeometry args={[0.1, 0.15, 4]} />
-        <meshStandardMaterial color="#ff7b2e" roughness={0.4} />
+      
+      {/* Silver belly */}
+      <mesh position={[0, -0.02, 0.04]}>
+        <capsuleGeometry args={[0.05, 0.14, 6, 10]} />
+        <meshStandardMaterial 
+          color="#d0dce8" 
+          roughness={0.25} 
+          metalness={0.5}
+        />
       </mesh>
+      
+      {/* Back (darker) */}
+      <mesh position={[0, 0.03, -0.02]}>
+        <capsuleGeometry args={[0.04, 0.12, 6, 8]} />
+        <meshStandardMaterial 
+          color="#607080" 
+          roughness={0.4} 
+          metalness={0.3}
+        />
+      </mesh>
+      
+      {/* Tail fin */}
+      <group position={[0, 0, 0.16]}>
+        <mesh rotation={[0, 0, Math.PI / 4]}>
+          <coneGeometry args={[0.06, 0.1, 4]} />
+          <meshStandardMaterial color="#8090a0" roughness={0.4} metalness={0.3} />
+        </mesh>
+      </group>
+      
+      {/* Dorsal fin */}
+      <mesh position={[0, 0.08, 0]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.02, 0.05, 3]} />
+        <meshStandardMaterial color="#708090" roughness={0.4} />
+      </mesh>
+      
       {/* Eye */}
-      <mesh position={[0.08, 0.05, -0.08]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshStandardMaterial color="#1a1a1a" />
+      <mesh position={[0.05, 0.02, -0.08]}>
+        <sphereGeometry args={[0.018, 8, 8]} />
+        <meshStandardMaterial color="#101010" />
       </mesh>
-      {/* Glow effect */}
-      <pointLight color="#ff9500" intensity={0.5} distance={2} />
+      
+      {/* Subtle glow for visibility */}
+      <pointLight color="#90b0d0" intensity={0.3} distance={1.5} />
     </group>
   );
 };
@@ -73,32 +112,30 @@ export const Fish = () => {
   const spawnFish = useCallback(() => {
     const lanes: (-1 | 0 | 1)[] = [-1, 0, 1];
     
-    // Sometimes spawn fish in patterns
-    const spawnPattern = Math.random() > 0.7;
+    // Pattern spawning
+    const spawnPattern = Math.random() > 0.75;
     
     if (spawnPattern) {
-      // Spawn a line of fish
       const lane = lanes[Math.floor(Math.random() * lanes.length)];
       const newFish: FishItem[] = [];
       for (let i = 0; i < 3; i++) {
         newFish.push({
           id: fishIdRef.current++,
           lane,
-          position: SPAWN_DISTANCE - i * 3,
+          position: SPAWN_DISTANCE - i * 2.5,
           collected: false,
-          height: 0.5,
+          height: 0.45,
         });
       }
       setFishItems(prev => [...prev, ...newFish]);
     } else {
-      // Single fish, sometimes elevated (need to jump)
-      const elevated = Math.random() > 0.8;
+      const elevated = Math.random() > 0.85;
       const newFish: FishItem = {
         id: fishIdRef.current++,
         lane: lanes[Math.floor(Math.random() * lanes.length)],
         position: SPAWN_DISTANCE,
         collected: false,
-        height: elevated ? 1.2 : 0.5,
+        height: elevated ? 1.1 : 0.45,
       };
       setFishItems(prev => [...prev, newFish]);
     }
@@ -107,38 +144,33 @@ export const Fish = () => {
   useFrame((_, delta) => {
     if (gameState !== 'playing') return;
 
-    // Execute any pending actions from last frame
     while (pendingActionsRef.current.length > 0) {
       const action = pendingActionsRef.current.shift();
       action?.();
     }
 
-    // Update combo timer
     updateComboTimer(delta);
 
-    // Spawn fish
     lastSpawnRef.current += delta * speed * 60;
-    if (lastSpawnRef.current > 10) {
+    if (lastSpawnRef.current > 12) {
       spawnFish();
       lastSpawnRef.current = 0;
     }
 
-    // Update fish positions and check collection
     setFishItems(prev => {
       return prev
         .map(fish => {
           const newPos = fish.position + speed * delta * 60;
           
-          // Check collection
+          // Check collection with tighter bounds
           if (!fish.collected && 
-              newPos > -0.5 && newPos < 1 && 
+              newPos > -0.4 && newPos < 0.8 && 
               fish.lane === currentLane) {
             // For elevated fish, need to be jumping
-            if (fish.height > 1 && !isJumping) {
+            if (fish.height > 0.9 && !isJumping) {
               return { ...fish, position: newPos };
             }
             
-            // Queue the score/combo updates for next frame
             pendingActionsRef.current.push(() => {
               addScore(10);
               addCombo();
@@ -152,7 +184,6 @@ export const Fish = () => {
     });
   });
 
-  // Reset fish when game restarts
   useEffect(() => {
     if (gameState === 'playing') {
       setFishItems([]);
@@ -169,7 +200,7 @@ export const Fish = () => {
         const pos: [number, number, number] = [x, fish.height, z];
         
         return (
-          <FishMesh 
+          <RealisticFish 
             key={fish.id} 
             position={pos} 
             collected={fish.collected}
