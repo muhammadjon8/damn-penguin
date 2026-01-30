@@ -2,7 +2,7 @@ import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 
 export const GameOver = () => {
-  const { score, distance, highScore, resetGame, goToTitle } = useGameStore();
+  const { score, distance, highScore, maxCombo, resetGame, goToTitle } = useGameStore();
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-20">
@@ -20,7 +20,7 @@ export const GameOver = () => {
         </p>
         
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="bg-secondary/30 rounded-lg p-4">
             <p className="text-accent/60 text-xs uppercase tracking-wider mb-1">Distance</p>
             <p className="font-display text-3xl text-foreground">{Math.floor(distance)}m</p>
@@ -28,15 +28,23 @@ export const GameOver = () => {
           <div className="bg-secondary/30 rounded-lg p-4">
             <p className="text-accent/60 text-xs uppercase tracking-wider mb-1">Fish</p>
             <p className="font-display text-3xl text-foreground">
-              <span className="text-fish">🐟</span> {score}
+              <span className="text-fish">🐟</span> {Math.floor(score)}
             </p>
           </div>
         </div>
         
+        {/* Max combo */}
+        {maxCombo > 1 && (
+          <div className="bg-secondary/30 rounded-lg p-3 mb-6">
+            <p className="text-accent/60 text-xs uppercase tracking-wider mb-1">Best Combo</p>
+            <p className="font-display text-2xl text-accent">x{maxCombo}</p>
+          </div>
+        )}
+        
         {/* High score */}
         {highScore > 0 && (
           <p className="text-muted-foreground text-sm mb-6">
-            Best: {highScore} fish • {Math.floor(distance)}m
+            Personal Best: {Math.floor(highScore)} fish
           </p>
         )}
         

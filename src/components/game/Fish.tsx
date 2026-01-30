@@ -12,10 +12,14 @@ interface FishItem {
   lane: -1 | 0 | 1;
   position: number;
   collected: boolean;
+  height: number;
 }
 
 // Single fish collectible
-const FishMesh = ({ position, collected }: { position: [number, number, number]; collected: boolean }) => {
+const FishMesh = ({ position, collected }: { 
+  position: [number, number, number]; 
+  collected: boolean;
+}) => {
   const meshRef = useRef<THREE.Group>(null);
   const scaleRef = useRef(1);
 
@@ -24,11 +28,11 @@ const FishMesh = ({ position, collected }: { position: [number, number, number];
     
     // Rotate and bob
     meshRef.current.rotation.y += delta * 2;
-    meshRef.current.position.y = 0.5 + Math.sin(Date.now() * 0.003) * 0.1;
+    meshRef.current.position.y = position[1] + Math.sin(Date.now() * 0.003) * 0.1;
     
     // Collection animation
     if (collected) {
-      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.2);
+      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, 0, 0.3);
     }
     meshRef.current.scale.setScalar(scaleRef.current);
   });
@@ -53,7 +57,7 @@ const FishMesh = ({ position, collected }: { position: [number, number, number];
         <meshStandardMaterial color="#1a1a1a" />
       </mesh>
       {/* Glow effect */}
-      <pointLight color="#ff9500" intensity={0.3} distance={2} />
+      <pointLight color="#ff9500" intensity={0.5} distance={2} />
     </group>
   );
 };
@@ -62,27 +66,59 @@ export const Fish = () => {
   const [fishItems, setFishItems] = useState<FishItem[]>([]);
   const fishIdRef = useRef(0);
   const lastSpawnRef = useRef(0);
-  const { speed, gameState, currentLane, addScore } = useGameStore();
+  const pendingActionsRef = useRef<(() => void)[]>([]);
+  
+  const { speed, gameState, currentLane, addScore, addCombo, updateComboTimer, isJumping } = useGameStore();
 
   const spawnFish = useCallback(() => {
     const lanes: (-1 | 0 | 1)[] = [-1, 0, 1];
     
-    const newFish: FishItem = {
-      id: fishIdRef.current++,
-      lane: lanes[Math.floor(Math.random() * lanes.length)],
-      position: SPAWN_DISTANCE,
-      collected: false,
-    };
+    // Sometimes spawn fish in patterns
+    const spawnPattern = Math.random() > 0.7;
     
-    setFishItems(prev => [...prev, newFish]);
+    if (spawnPattern) {
+      // Spawn a line of fish
+      const lane = lanes[Math.floor(Math.random() * lanes.length)];
+      const newFish: FishItem[] = [];
+      for (let i = 0; i < 3; i++) {
+        newFish.push({
+          id: fishIdRef.current++,
+          lane,
+          position: SPAWN_DISTANCE - i * 3,
+          collected: false,
+          height: 0.5,
+        });
+      }
+      setFishItems(prev => [...prev, ...newFish]);
+    } else {
+      // Single fish, sometimes elevated (need to jump)
+      const elevated = Math.random() > 0.8;
+      const newFish: FishItem = {
+        id: fishIdRef.current++,
+        lane: lanes[Math.floor(Math.random() * lanes.length)],
+        position: SPAWN_DISTANCE,
+        collected: false,
+        height: elevated ? 1.2 : 0.5,
+      };
+      setFishItems(prev => [...prev, newFish]);
+    }
   }, []);
 
   useFrame((_, delta) => {
     if (gameState !== 'playing') return;
 
+    // Execute any pending actions from last frame
+    while (pendingActionsRef.current.length > 0) {
+      const action = pendingActionsRef.current.shift();
+      action?.();
+    }
+
+    // Update combo timer
+    updateComboTimer(delta);
+
     // Spawn fish
     lastSpawnRef.current += delta * speed * 60;
-    if (lastSpawnRef.current > 8) {
+    if (lastSpawnRef.current > 10) {
       spawnFish();
       lastSpawnRef.current = 0;
     }
@@ -97,7 +133,16 @@ export const Fish = () => {
           if (!fish.collected && 
               newPos > -0.5 && newPos < 1 && 
               fish.lane === currentLane) {
-            addScore(10);
+            // For elevated fish, need to be jumping
+            if (fish.height > 1 && !isJumping) {
+              return { ...fish, position: newPos };
+            }
+            
+            // Queue the score/combo updates for next frame
+            pendingActionsRef.current.push(() => {
+              addScore(10);
+              addCombo();
+            });
             return { ...fish, position: newPos, collected: true };
           }
           
@@ -112,6 +157,7 @@ export const Fish = () => {
     if (gameState === 'playing') {
       setFishItems([]);
       lastSpawnRef.current = 0;
+      pendingActionsRef.current = [];
     }
   }, [gameState]);
 
@@ -120,9 +166,15 @@ export const Fish = () => {
       {fishItems.map(fish => {
         const x = fish.lane * LANE_WIDTH;
         const z = fish.position;
-        const pos: [number, number, number] = [x, 0, z];
+        const pos: [number, number, number] = [x, fish.height, z];
         
-        return <FishMesh key={fish.id} position={pos} collected={fish.collected} />;
+        return (
+          <FishMesh 
+            key={fish.id} 
+            position={pos} 
+            collected={fish.collected}
+          />
+        );
       })}
     </group>
   );
