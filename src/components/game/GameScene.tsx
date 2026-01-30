@@ -10,8 +10,17 @@ import {
   DynamicSky,
   Aurora 
 } from './WeatherSystem';
+import { 
+  ThoughtBubble3D, 
+  ColonySilhouette, 
+  ShootingStar, 
+  DistantPenguin,
+  useNarrativeSystem 
+} from './NarrativeSystem';
+import { LandmarkSystem, Footprints, GodRays } from './LandmarkSystem';
+import { SpecialFishSpawner } from './SpecialFish';
 import { useGameStore } from '@/store/gameStore';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 // Component to handle game updates
@@ -21,18 +30,27 @@ const GameUpdater = () => {
     incrementDistance, 
     updateEnvironment, 
     updateAbilities,
+    updateSlowMotion,
     checkMilestone,
     increaseSpeed,
     distance,
+    isSlowMotion,
   } = useGameStore();
   
-  const lastSpeedIncreaseRef = { current: 0 };
+  const lastSpeedIncreaseRef = useRef(0);
+  
+  // Trigger narrative system
+  useNarrativeSystem();
   
   useFrame((_, delta) => {
     if (gameState === 'playing') {
-      incrementDistance(delta * 60);
-      updateEnvironment(delta);
-      updateAbilities(delta);
+      // Apply slow motion effect
+      const effectiveDelta = isSlowMotion ? delta * 0.3 : delta;
+      
+      incrementDistance(effectiveDelta * 60);
+      updateEnvironment(effectiveDelta);
+      updateAbilities(effectiveDelta);
+      updateSlowMotion(delta); // Use real delta for timer
       checkMilestone();
       
       // Increase speed every 500m
@@ -49,8 +67,9 @@ const GameUpdater = () => {
 // Camera that follows penguin with weather effects
 const GameCamera = () => {
   const { camera } = useThree();
-  const { currentLane, weather, isBellySliding } = useGameStore();
-  const shakeRef = { current: 0 };
+  const { currentLane, weather, isBellySliding, isSlowMotion } = useGameStore();
+  const shakeRef = useRef(0);
+  const fovRef = useRef(60);
 
   useEffect(() => {
     camera.position.set(0, 4, 8);
@@ -71,14 +90,49 @@ const GameCamera = () => {
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 4, 0.05);
     }
     
-    // Pull camera back slightly during belly slide for speed effect
-    const targetZ = isBellySliding ? 9 : 8;
+    // Pull camera back and zoom during special moments
+    let targetZ = 8;
+    let targetFov = 60;
+    
+    if (isBellySliding) {
+      targetZ = 9;
+      targetFov = 65; // Wider FOV for speed effect
+    }
+    
+    if (isSlowMotion) {
+      targetZ = 6; // Pull in closer
+      targetFov = 50; // Narrower for dramatic effect
+    }
+    
     camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.05);
+    fovRef.current = THREE.MathUtils.lerp(fovRef.current, targetFov, 0.05);
+    (camera as THREE.PerspectiveCamera).fov = fovRef.current;
+    (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
     
     camera.lookAt(0, 1, -10);
   });
 
   return null;
+};
+
+// Slow motion visual overlay effect
+const SlowMotionEffect = () => {
+  const { isSlowMotion } = useGameStore();
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame(() => {
+    if (!meshRef.current) return;
+    const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+    const targetOpacity = isSlowMotion ? 0.15 : 0;
+    mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOpacity, 0.1);
+  });
+  
+  return (
+    <mesh ref={meshRef} position={[0, 0, 5]}>
+      <planeGeometry args={[30, 20]} />
+      <meshBasicMaterial color="#ffd700" transparent opacity={0} />
+    </mesh>
+  );
 };
 
 export const GameScene = () => {
@@ -100,12 +154,23 @@ export const GameScene = () => {
         <Environment />
         <WeatherParticles />
         <Aurora />
+        <GodRays />
+        
+        {/* Easter eggs */}
+        <ShootingStar />
+        <DistantPenguin />
         
         {gameState === 'playing' && (
           <>
             <Penguin />
+            <ThoughtBubble3D />
             <Obstacles />
             <Fish />
+            <SpecialFishSpawner />
+            <LandmarkSystem />
+            <Footprints />
+            <ColonySilhouette />
+            <SlowMotionEffect />
             <GameUpdater />
           </>
         )}

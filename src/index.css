@@ -208,6 +208,25 @@
   }
 }
 
+@keyframes vignette-pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Slow motion effect */
+.slow-motion-active {
+  animation: vignette-pulse 0.5s ease-in-out infinite;
+}
+
+/* Radial gradient utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle at center, var(--tw-gradient-stops));
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
@@ -224,4 +243,15 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(195 80% 75% / 0.5);
+}
+
+/* Mobile touch improvements */
+@media (hover: none) and (pointer: coarse) {
+  .pointer-events-auto {
+    touch-action: manipulation;
+  }
+  
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
