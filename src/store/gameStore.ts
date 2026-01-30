@@ -45,6 +45,15 @@ interface GameStore {
   showMilestone: boolean;
   milestoneText: string;
   
+  // Narrative system
+  showThought: boolean;
+  thoughtText: string;
+  thoughtsShown: number;
+  showMemory: boolean;
+  memoryText: string;
+  isSlowMotion: boolean;
+  slowMotionTimer: number;
+  
   // Actions
   startGame: () => void;
   endGame: () => void;
@@ -82,6 +91,14 @@ interface GameStore {
   // Milestones
   checkMilestone: () => void;
   hideMilestone: () => void;
+  
+  // Narrative
+  triggerThought: (text: string) => void;
+  hideThought: () => void;
+  triggerMemory: (text: string) => void;
+  hideMemory: () => void;
+  triggerSlowMotion: () => void;
+  updateSlowMotion: (delta: number) => void;
 }
 
 const COMBO_TIMEOUT = 2; // seconds
@@ -130,6 +147,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showMilestone: false,
   milestoneText: '',
   
+  // Narrative
+  showThought: false,
+  thoughtText: '',
+  thoughtsShown: 0,
+  showMemory: false,
+  memoryText: '',
+  isSlowMotion: false,
+  slowMotionTimer: 0,
+  
   // Game flow actions
   startGame: () => set({
     gameState: 'playing',
@@ -155,6 +181,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     lastMilestone: 0,
     showMilestone: false,
     milestoneText: '',
+    showThought: false,
+    thoughtText: '',
+    thoughtsShown: 0,
+    showMemory: false,
+    memoryText: '',
+    isSlowMotion: false,
+    slowMotionTimer: 0,
   }),
   
   endGame: () => {
@@ -189,6 +222,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     lastMilestone: 0,
     showMilestone: false,
     milestoneText: '',
+    showThought: false,
+    thoughtText: '',
+    thoughtsShown: 0,
+    showMemory: false,
+    memoryText: '',
+    isSlowMotion: false,
+    slowMotionTimer: 0,
   }),
   
   goToTitle: () => set({
@@ -206,6 +246,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     comboTimer: 0,
     weather: 'clear',
     timeOfDay: 'day',
+    showThought: false,
+    showMemory: false,
   }),
   
   // Movement actions
@@ -402,4 +444,50 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   
   hideMilestone: () => set({ showMilestone: false }),
+  
+  // Narrative actions
+  triggerThought: (text: string) => {
+    set({
+      showThought: true,
+      thoughtText: text,
+      thoughtsShown: get().thoughtsShown + 1,
+    });
+    
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      get().hideThought();
+    }, 4000);
+  },
+  
+  hideThought: () => set({ showThought: false }),
+  
+  triggerMemory: (text: string) => {
+    set({
+      showMemory: true,
+      memoryText: text,
+    });
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      get().hideMemory();
+    }, 5000);
+  },
+  
+  hideMemory: () => set({ showMemory: false }),
+  
+  triggerSlowMotion: () => {
+    set({ isSlowMotion: true, slowMotionTimer: 1.5 });
+  },
+  
+  updateSlowMotion: (delta: number) => {
+    const { isSlowMotion, slowMotionTimer } = get();
+    if (isSlowMotion) {
+      const newTimer = slowMotionTimer - delta;
+      if (newTimer <= 0) {
+        set({ isSlowMotion: false, slowMotionTimer: 0 });
+      } else {
+        set({ slowMotionTimer: newTimer });
+      }
+    }
+  },
 }));
