@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore, getBiomeForDistance, BiomeType } from '@/store/gameStore';
+import { playCollisionSound } from './AudioSystem';
 
 const LANE_WIDTH = 2;
 const SPAWN_DISTANCE = -70;
@@ -431,7 +432,7 @@ export const Obstacles = () => {
           case 'crevasse':
           case 'large_crevasse':
             if (!isJumping && invincibleTimer <= 0) {
-              pendingActionsRef.current.push(() => endGame());
+              pendingActionsRef.current.push(() => { playCollisionSound(); endGame(); });
               return [];
             }
             break;
@@ -442,12 +443,12 @@ export const Obstacles = () => {
           case 'snowball':
             // Can jump over or slide under (if tall enough)
             if (!isJumping && !isSliding && !isBellySliding && invincibleTimer <= 0) {
-              pendingActionsRef.current.push(() => endGame());
+              pendingActionsRef.current.push(() => { playCollisionSound(); endGame(); });
               return [];
             }
             // If sliding, only safe if obstacle is tall enough
             if ((isSliding || isBellySliding) && bounds.height < 0.5 && invincibleTimer <= 0) {
-              pendingActionsRef.current.push(() => endGame());
+              pendingActionsRef.current.push(() => { playCollisionSound(); endGame(); });
               return [];
             }
             break;
@@ -456,7 +457,7 @@ export const Obstacles = () => {
           case 'fox':
           case 'wave':
             if (!isJumping && invincibleTimer <= 0) {
-              pendingActionsRef.current.push(() => endGame());
+              pendingActionsRef.current.push(() => { playCollisionSound(); endGame(); });
               return [];
             }
             break;

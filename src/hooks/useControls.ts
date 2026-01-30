@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { playJumpSound, playSlideSound } from '@/components/game/AudioSystem';
 
 export const useControls = () => {
   const { 
@@ -43,6 +44,7 @@ export const useControls = () => {
       case ' ':
         e.preventDefault();
         jump();
+        playJumpSound();
         break;
       case 'ArrowDown':
       case 's':
@@ -51,6 +53,7 @@ export const useControls = () => {
         // Start belly slide on hold
         startBellySlide();
         bellySlideHeldRef.current = true;
+        playSlideSound();
         break;
     }
   }, [gameState, moveLeft, moveRight, jump, startBellySlide]);

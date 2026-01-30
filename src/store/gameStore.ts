@@ -6,20 +6,20 @@ export type WeatherType = 'clear' | 'light_snow' | 'blizzard' | 'foggy';
 export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night';
 export type BiomeType = 'ice_plains' | 'ocean' | 'cliffs' | 'mountain' | 'peaks';
 
-// Biome distance thresholds
+// Biome distance thresholds - every 1000m
 export const BIOME_THRESHOLDS = {
-  ice_plains: { start: 0, end: 2000 },
-  ocean: { start: 2000, end: 4000 },
-  cliffs: { start: 4000, end: 6000 },
-  mountain: { start: 6000, end: 8000 },
-  peaks: { start: 8000, end: Infinity },
+  ice_plains: { start: 0, end: 1000 },
+  ocean: { start: 1000, end: 2000 },
+  cliffs: { start: 2000, end: 3000 },
+  mountain: { start: 3000, end: 4000 },
+  peaks: { start: 4000, end: Infinity },
 };
 
 export const getBiomeForDistance = (distance: number): BiomeType => {
-  if (distance < 2000) return 'ice_plains';
-  if (distance < 4000) return 'ocean';
-  if (distance < 6000) return 'cliffs';
-  if (distance < 8000) return 'mountain';
+  if (distance < 1000) return 'ice_plains';
+  if (distance < 2000) return 'ocean';
+  if (distance < 3000) return 'cliffs';
+  if (distance < 4000) return 'mountain';
   return 'peaks';
 };
 
