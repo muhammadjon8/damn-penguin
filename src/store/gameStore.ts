@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { trackGameStart, trackGameOver, trackBiomeReached, trackMilestone, trackHighScore } from '@/lib/analytics';
 
 export type GameState = 'title' | 'playing' | 'gameOver';
 export type Lane = -1 | 0 | 1;
@@ -44,6 +45,7 @@ interface GameStore {
   score: number;
   distance: number;
   highScore: number;
+  gameStartTime: number;
   
   // Player state
   currentLane: Lane;
@@ -74,6 +76,7 @@ interface GameStore {
   timeTransition: number;
   currentBiome: BiomeType;
   biomeTransitionProgress: number;
+  lastBiome: BiomeType;
   
   // Milestones
   lastMilestone: number;
@@ -161,6 +164,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   score: 0,
   distance: 0,
   highScore: 0,
+  gameStartTime: 0,
   currentLane: 0,
   isJumping: false,
   isSliding: false,
@@ -189,6 +193,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   timeTransition: 0,
   currentBiome: 'ice_plains',
   biomeTransitionProgress: 0,
+  lastBiome: 'ice_plains',
   
   // Milestones
   lastMilestone: 0,
@@ -211,88 +216,116 @@ export const useGameStore = create<GameStore>((set, get) => ({
   invincibleTimer: 0,
   
   // Game flow actions
-  startGame: () => set({
-    gameState: 'playing',
-    score: 0,
-    distance: 0,
-    currentLane: 0,
-    isJumping: false,
-    isSliding: false,
-    isBellySliding: false,
-    isSwimming: false,
-    isSlipping: false,
-    speed: 0.3,
-    bellySlideEnergy: BELLY_SLIDE_MAX,
-    bellySlideCooldown: 0,
-    comboCount: 0,
-    comboTimer: 0,
-    maxCombo: 0,
-    speedBoostTimer: 0,
-    weather: 'clear',
-    timeOfDay: 'day',
-    weatherTransition: 0,
-    timeTransition: 0,
-    currentBiome: 'ice_plains',
-    biomeTransitionProgress: 0,
-    lastMilestone: 0,
-    showMilestone: false,
-    milestoneText: '',
-    showThought: false,
-    thoughtText: '',
-    thoughtsShown: 0,
-    showMemory: false,
-    memoryText: '',
-    isSlowMotion: false,
-    slowMotionTimer: 0,
-    invincibleTimer: INVINCIBILITY_DURATION, // Start with brief invincibility
-  }),
+  startGame: () => {
+    trackGameStart();
+    set({
+      gameState: 'playing',
+      score: 0,
+      distance: 0,
+      gameStartTime: Date.now(),
+      currentLane: 0,
+      isJumping: false,
+      isSliding: false,
+      isBellySliding: false,
+      isSwimming: false,
+      isSlipping: false,
+      speed: 0.3,
+      bellySlideEnergy: BELLY_SLIDE_MAX,
+      bellySlideCooldown: 0,
+      comboCount: 0,
+      comboTimer: 0,
+      maxCombo: 0,
+      speedBoostTimer: 0,
+      weather: 'clear',
+      timeOfDay: 'day',
+      weatherTransition: 0,
+      timeTransition: 0,
+      currentBiome: 'ice_plains',
+      biomeTransitionProgress: 0,
+      lastBiome: 'ice_plains',
+      lastMilestone: 0,
+      showMilestone: false,
+      milestoneText: '',
+      showThought: false,
+      thoughtText: '',
+      thoughtsShown: 0,
+      showMemory: false,
+      memoryText: '',
+      isSlowMotion: false,
+      slowMotionTimer: 0,
+      invincibleTimer: INVINCIBILITY_DURATION,
+    });
+  },
   
   endGame: () => {
-    const { score, highScore, maxCombo, comboCount, invincibleTimer } = get();
+    const { score, distance, highScore, maxCombo, comboCount, invincibleTimer, currentBiome, gameStartTime } = get();
     // Don't end game during invincibility
     if (invincibleTimer > 0) return;
+    
+    const survivalTime = (Date.now() - gameStartTime) / 1000;
+    const isNewHighScore = distance > highScore;
+    
+    // Track game over analytics
+    trackGameOver({
+      distance,
+      fishCollected: Math.floor(score),
+      biomeReached: currentBiome,
+      survivalTime,
+      maxCombo: Math.max(maxCombo, comboCount),
+    });
+    
+    // Track high score if beaten
+    if (isNewHighScore && highScore > 0) {
+      trackHighScore(distance, highScore);
+    }
+    
     set({
       gameState: 'gameOver',
-      highScore: Math.max(score, highScore),
+      highScore: Math.max(distance, highScore),
       maxCombo: Math.max(maxCombo, comboCount),
     });
   },
   
-  resetGame: () => set({
-    gameState: 'playing',
-    score: 0,
-    distance: 0,
-    currentLane: 0,
-    isJumping: false,
-    isSliding: false,
-    isBellySliding: false,
-    isSwimming: false,
-    isSlipping: false,
-    speed: 0.3,
-    bellySlideEnergy: BELLY_SLIDE_MAX,
-    bellySlideCooldown: 0,
-    comboCount: 0,
-    comboTimer: 0,
-    speedBoostTimer: 0,
-    weather: 'clear',
-    timeOfDay: 'day',
-    weatherTransition: 0,
-    timeTransition: 0,
-    currentBiome: 'ice_plains',
-    biomeTransitionProgress: 0,
-    lastMilestone: 0,
-    showMilestone: false,
-    milestoneText: '',
-    showThought: false,
-    thoughtText: '',
-    thoughtsShown: 0,
-    showMemory: false,
-    memoryText: '',
-    isSlowMotion: false,
-    slowMotionTimer: 0,
-    invincibleTimer: INVINCIBILITY_DURATION,
-  }),
-  
+  resetGame: () => {
+    trackGameStart();
+    set({
+      gameState: 'playing',
+      score: 0,
+      distance: 0,
+      gameStartTime: Date.now(),
+      currentLane: 0,
+      isJumping: false,
+      isSliding: false,
+      isBellySliding: false,
+      isSwimming: false,
+      isSlipping: false,
+      speed: 0.3,
+      bellySlideEnergy: BELLY_SLIDE_MAX,
+      bellySlideCooldown: 0,
+      comboCount: 0,
+      comboTimer: 0,
+      speedBoostTimer: 0,
+      weather: 'clear',
+      timeOfDay: 'day',
+      weatherTransition: 0,
+      timeTransition: 0,
+      currentBiome: 'ice_plains',
+      biomeTransitionProgress: 0,
+      lastBiome: 'ice_plains',
+      lastMilestone: 0,
+      showMilestone: false,
+      milestoneText: '',
+      showThought: false,
+      thoughtText: '',
+      thoughtsShown: 0,
+      showMemory: false,
+      memoryText: '',
+      isSlowMotion: false,
+      slowMotionTimer: 0,
+      invincibleTimer: INVINCIBILITY_DURATION,
+    });
+  },
+
   goToTitle: () => set({
     gameState: 'title',
     score: 0,
@@ -442,11 +475,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   
   updateBiome: () => {
-    const { distance } = get();
+    const { distance, lastBiome } = get();
     const transition = getBiomeTransition(distance);
+    
+    // Track biome change for analytics
+    if (transition.current !== lastBiome) {
+      trackBiomeReached(transition.current, distance);
+    }
+    
     set({
       currentBiome: transition.current,
       biomeTransitionProgress: transition.progress,
+      lastBiome: transition.current,
     });
   },
   
