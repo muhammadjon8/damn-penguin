@@ -14,7 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      game_sessions: {
+        Row: {
+          best_biome: string
+          best_distance: number
+          best_fish: number
+          challenge_attempts: number
+          created_at: string
+          id: string
+          last_played: string
+          play_count: number
+          referrer_session_id: string | null
+          session_id: string
+          total_distance: number
+        }
+        Insert: {
+          best_biome?: string
+          best_distance?: number
+          best_fish?: number
+          challenge_attempts?: number
+          created_at?: string
+          id?: string
+          last_played?: string
+          play_count?: number
+          referrer_session_id?: string | null
+          session_id: string
+          total_distance?: number
+        }
+        Update: {
+          best_biome?: string
+          best_distance?: number
+          best_fish?: number
+          challenge_attempts?: number
+          created_at?: string
+          id?: string
+          last_played?: string
+          play_count?: number
+          referrer_session_id?: string | null
+          session_id?: string
+          total_distance?: number
+        }
+        Relationships: []
+      }
+      leaderboard: {
+        Row: {
+          biome_reached: string
+          created_at: string
+          distance: number
+          fish_collected: number
+          id: string
+          player_name: string
+          session_id: string | null
+        }
+        Insert: {
+          biome_reached?: string
+          created_at?: string
+          distance: number
+          fish_collected?: number
+          id?: string
+          player_name?: string
+          session_id?: string | null
+        }
+        Update: {
+          biome_reached?: string
+          created_at?: string
+          distance?: number
+          fish_collected?: number
+          id?: string
+          player_name?: string
+          session_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

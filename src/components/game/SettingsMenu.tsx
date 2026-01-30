@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Volume2, Sparkles, Trophy, X, Info, Gamepad2 } from 'lucide-react';
+import { Settings, Volume2, Sparkles, Trophy, X, Info, Gamepad2, Globe, Award } from 'lucide-react';
+import { loadAchievements, Achievement } from '@/lib/achievements';
+import { GlobalLeaderboard } from './GlobalLeaderboard';
 
 // Settings storage
 const SETTINGS_KEY = 'penguin_game_settings';
@@ -256,32 +258,54 @@ export const shareResult = async (distance: number, score: number) => {
 // Title screen menu buttons with tabs
 export const TitleMenuButtons = () => {
   const [showMenu, setShowMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState<'settings' | 'leaderboard' | 'credits'>('settings');
+  const [showGlobalLeaderboard, setShowGlobalLeaderboard] = useState(false);
+  const [activeTab, setActiveTab] = useState<'settings' | 'leaderboard' | 'achievements' | 'credits'>('settings');
   
   return (
     <>
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4 z-20">
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
         <Button
           variant="ghost"
           size="icon"
-          className="pointer-events-auto glass-panel rounded-full w-12 h-12"
+          className="pointer-events-auto glass-panel rounded-full w-11 h-11"
           onClick={() => { setActiveTab('settings'); setShowMenu(true); }}
+          title="Settings"
         >
           <Settings className="w-5 h-5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="pointer-events-auto glass-panel rounded-full w-12 h-12"
+          className="pointer-events-auto glass-panel rounded-full w-11 h-11"
+          onClick={() => setShowGlobalLeaderboard(true)}
+          title="Global Leaderboard"
+        >
+          <Globe className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="pointer-events-auto glass-panel rounded-full w-11 h-11"
           onClick={() => { setActiveTab('leaderboard'); setShowMenu(true); }}
+          title="Personal Records"
         >
           <Trophy className="w-5 h-5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="pointer-events-auto glass-panel rounded-full w-12 h-12"
+          className="pointer-events-auto glass-panel rounded-full w-11 h-11"
+          onClick={() => { setActiveTab('achievements'); setShowMenu(true); }}
+          title="Achievements"
+        >
+          <Award className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="pointer-events-auto glass-panel rounded-full w-11 h-11"
           onClick={() => { setActiveTab('credits'); setShowMenu(true); }}
+          title="About"
         >
           <Info className="w-5 h-5" />
         </Button>
@@ -295,6 +319,9 @@ export const TitleMenuButtons = () => {
             onClose={() => setShowMenu(false)} 
           />
         )}
+        {showGlobalLeaderboard && (
+          <GlobalLeaderboard onClose={() => setShowGlobalLeaderboard(false)} />
+        )}
       </AnimatePresence>
     </>
   );
@@ -302,17 +329,19 @@ export const TitleMenuButtons = () => {
 
 // Tabbed Menu Component
 interface TabbedMenuProps {
-  activeTab: 'settings' | 'leaderboard' | 'credits';
-  setActiveTab: (tab: 'settings' | 'leaderboard' | 'credits') => void;
+  activeTab: 'settings' | 'leaderboard' | 'achievements' | 'credits';
+  setActiveTab: (tab: 'settings' | 'leaderboard' | 'achievements' | 'credits') => void;
   onClose: () => void;
 }
 
 const TabbedMenu = ({ activeTab, setActiveTab, onClose }: TabbedMenuProps) => {
   const [settings, setSettings] = useState<GameSettings>(loadSettings());
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   
   useEffect(() => {
     setEntries(loadLeaderboard());
+    setAchievements(loadAchievements());
   }, []);
   
   const handleChange = (key: keyof GameSettings, value: number | string) => {
@@ -346,18 +375,22 @@ const TabbedMenu = ({ activeTab, setActiveTab, onClose }: TabbedMenuProps) => {
         
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="settings" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
+              <span className="hidden sm:inline text-xs">Settings</span>
             </TabsTrigger>
-            <TabsTrigger value="leaderboard" className="flex items-center gap-2">
+            <TabsTrigger value="leaderboard" className="flex items-center gap-1">
               <Trophy className="w-4 h-4" />
-              <span className="hidden sm:inline">Records</span>
+              <span className="hidden sm:inline text-xs">Records</span>
             </TabsTrigger>
-            <TabsTrigger value="credits" className="flex items-center gap-2">
+            <TabsTrigger value="achievements" className="flex items-center gap-1">
+              <Award className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs">Awards</span>
+            </TabsTrigger>
+            <TabsTrigger value="credits" className="flex items-center gap-1">
               <Info className="w-4 h-4" />
-              <span className="hidden sm:inline">About</span>
+              <span className="hidden sm:inline text-xs">About</span>
             </TabsTrigger>
           </TabsList>
           
@@ -474,6 +507,45 @@ const TabbedMenu = ({ activeTab, setActiveTab, onClose }: TabbedMenuProps) => {
             )}
           </TabsContent>
           
+          {/* Achievements Tab */}
+          <TabsContent value="achievements">
+            <div className="flex items-center gap-2 mb-4">
+              <Award className="w-5 h-5 text-fish" />
+              <h3 className="font-display text-lg">Achievements</h3>
+            </div>
+            
+            <div className="space-y-2">
+              {achievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg ${
+                    achievement.unlocked 
+                      ? 'bg-fish/10 border border-fish/30' 
+                      : 'bg-secondary/20 opacity-50'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-xl">
+                    {achievement.unlocked ? achievement.icon : '🔒'}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-display text-sm ${achievement.unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {achievement.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {achievement.description}
+                    </p>
+                  </div>
+                  {achievement.unlocked && (
+                    <span className="text-xs text-fish">✓</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-xs text-muted-foreground/60 text-center mt-4">
+              {achievements.filter(a => a.unlocked).length} / {achievements.length} unlocked
+            </p>
+          </TabsContent>
           {/* Credits Tab */}
           <TabsContent value="credits">
             <div className="space-y-4 text-center">

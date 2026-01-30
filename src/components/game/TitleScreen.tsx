@@ -1,7 +1,11 @@
+import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { TitleMenuButtons } from './SettingsMenu';
+import { PlayerStats } from './PlayerStats';
 import { motion } from 'framer-motion';
+import { initSession } from '@/lib/session';
+import { trackPageView } from '@/lib/analytics';
 
 // Inspirational quotes for loading/title
 const QUOTES = [
@@ -15,6 +19,12 @@ const QUOTES = [
 export const TitleScreen = () => {
   const { startGame } = useGameStore();
   const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+
+  useEffect(() => {
+    // Initialize session and track page view
+    initSession();
+    trackPageView('title_screen');
+  }, []);
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
@@ -85,6 +95,9 @@ export const TitleScreen = () => {
           </p>
         </motion.div>
       </motion.div>
+      
+      {/* Player stats (returning players) */}
+      <PlayerStats />
       
       {/* Decorative snow effect overlay */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
