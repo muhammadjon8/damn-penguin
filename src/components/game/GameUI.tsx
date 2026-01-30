@@ -153,10 +153,64 @@ const ControlHints = () => {
   );
 };
 
+// Biome indicator
+const BiomeIndicator = () => {
+  const { distance, currentBiome } = useGameStore();
+  
+  const biomeNames: Record<string, string> = {
+    ice_plains: 'Ice Plains',
+    ocean: 'Ocean Crossing',
+    cliffs: 'Coastal Cliffs',
+    mountain: 'Mountain Ascent',
+    peaks: 'Treacherous Peaks',
+  };
+  
+  const biomeIcons: Record<string, string> = {
+    ice_plains: '❄️',
+    ocean: '🌊',
+    cliffs: '🪨',
+    mountain: '⛰️',
+    peaks: '🏔️',
+  };
+  
+  return (
+    <div className="absolute top-16 left-4 z-10 pointer-events-none">
+      <div className="glass-panel rounded-lg px-3 py-1.5 flex items-center gap-2">
+        <span className="text-base">{biomeIcons[currentBiome]}</span>
+        <span className="text-xs text-muted-foreground">{biomeNames[currentBiome]}</span>
+      </div>
+    </div>
+  );
+};
+
+// Debug toggle (press D key)
+const DebugToggle = () => {
+  const { debugCollisions, toggleDebugCollisions } = useGameStore();
+  
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'd' || e.key === 'D') {
+        toggleDebugCollisions();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [toggleDebugCollisions]);
+  
+  if (!debugCollisions) return null;
+  
+  return (
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+      <div className="bg-destructive/80 text-white text-xs px-3 py-1 rounded-full">
+        DEBUG MODE (Press D to toggle)
+      </div>
+    </div>
+  );
+};
+
 export const GameUI = () => {
   const { score, distance, weather } = useGameStore();
   
-  // Visibility modifier based on weather
   const blizzardClass = weather === 'blizzard' ? 'opacity-80' : '';
 
   return (
@@ -188,7 +242,9 @@ export const GameUI = () => {
       <ComboCounter />
       <AbilityIndicators />
       <WeatherIndicator />
+      <BiomeIndicator />
       <ControlHints />
+      <DebugToggle />
     </>
   );
 };

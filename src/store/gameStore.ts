@@ -4,6 +4,39 @@ export type GameState = 'title' | 'playing' | 'gameOver';
 export type Lane = -1 | 0 | 1;
 export type WeatherType = 'clear' | 'light_snow' | 'blizzard' | 'foggy';
 export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night';
+export type BiomeType = 'ice_plains' | 'ocean' | 'cliffs' | 'mountain' | 'peaks';
+
+// Biome distance thresholds
+export const BIOME_THRESHOLDS = {
+  ice_plains: { start: 0, end: 2000 },
+  ocean: { start: 2000, end: 4000 },
+  cliffs: { start: 4000, end: 6000 },
+  mountain: { start: 6000, end: 8000 },
+  peaks: { start: 8000, end: Infinity },
+};
+
+export const getBiomeForDistance = (distance: number): BiomeType => {
+  if (distance < 2000) return 'ice_plains';
+  if (distance < 4000) return 'ocean';
+  if (distance < 6000) return 'cliffs';
+  if (distance < 8000) return 'mountain';
+  return 'peaks';
+};
+
+export const getBiomeTransition = (distance: number): { current: BiomeType; next: BiomeType | null; progress: number } => {
+  const biome = getBiomeForDistance(distance);
+  const threshold = BIOME_THRESHOLDS[biome];
+  
+  // Check if we're in transition zone (last 200m of biome)
+  const transitionStart = threshold.end - 200;
+  if (distance >= transitionStart && threshold.end !== Infinity) {
+    const nextBiome = getBiomeForDistance(threshold.end + 1);
+    const progress = (distance - transitionStart) / 200;
+    return { current: biome, next: nextBiome, progress };
+  }
+  
+  return { current: biome, next: null, progress: 0 };
+};
 
 interface GameStore {
   // Game state
@@ -39,13 +72,15 @@ interface GameStore {
   timeOfDay: TimeOfDay;
   weatherTransition: number;
   timeTransition: number;
+  currentBiome: BiomeType;
+  biomeTransitionProgress: number;
   
   // Milestones
   lastMilestone: number;
   showMilestone: boolean;
   milestoneText: string;
   
-  // Narrative system
+  // Narrative
   showThought: boolean;
   thoughtText: string;
   thoughtsShown: number;
@@ -53,6 +88,12 @@ interface GameStore {
   memoryText: string;
   isSlowMotion: boolean;
   slowMotionTimer: number;
+  
+  // Debug
+  debugCollisions: boolean;
+  
+  // Grace period for collisions
+  invincibleTimer: number;
   
   // Actions
   startGame: () => void;
@@ -84,9 +125,11 @@ interface GameStore {
   setWeather: (weather: WeatherType) => void;
   setTimeOfDay: (time: TimeOfDay) => void;
   updateEnvironment: (delta: number) => void;
+  updateBiome: () => void;
   
   // Abilities
   updateAbilities: (delta: number) => void;
+  updateInvincibility: (delta: number) => void;
   
   // Milestones
   checkMilestone: () => void;
@@ -99,15 +142,18 @@ interface GameStore {
   hideMemory: () => void;
   triggerSlowMotion: () => void;
   updateSlowMotion: (delta: number) => void;
+  
+  // Debug
+  toggleDebugCollisions: () => void;
 }
 
-const COMBO_TIMEOUT = 2; // seconds
-const BELLY_SLIDE_MAX = 3; // seconds
-const BELLY_SLIDE_COOLDOWN = 5; // seconds
-const MILESTONE_INTERVAL = 500; // meters
-
-const TIME_CYCLE_DURATION = 150; // seconds for full day cycle
-const WEATHER_CHANGE_INTERVAL = 45; // seconds between weather changes
+const COMBO_TIMEOUT = 2;
+const BELLY_SLIDE_MAX = 3;
+const BELLY_SLIDE_COOLDOWN = 5;
+const MILESTONE_INTERVAL = 500;
+const TIME_CYCLE_DURATION = 150;
+const WEATHER_CHANGE_INTERVAL = 45;
+const INVINCIBILITY_DURATION = 0.3; // Grace period after near-miss
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // Initial state
@@ -141,6 +187,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   timeOfDay: 'day',
   weatherTransition: 0,
   timeTransition: 0,
+  currentBiome: 'ice_plains',
+  biomeTransitionProgress: 0,
   
   // Milestones
   lastMilestone: 0,
@@ -155,6 +203,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   memoryText: '',
   isSlowMotion: false,
   slowMotionTimer: 0,
+  
+  // Debug
+  debugCollisions: false,
+  
+  // Grace period
+  invincibleTimer: 0,
   
   // Game flow actions
   startGame: () => set({
@@ -178,6 +232,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     timeOfDay: 'day',
     weatherTransition: 0,
     timeTransition: 0,
+    currentBiome: 'ice_plains',
+    biomeTransitionProgress: 0,
     lastMilestone: 0,
     showMilestone: false,
     milestoneText: '',
@@ -188,10 +244,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     memoryText: '',
     isSlowMotion: false,
     slowMotionTimer: 0,
+    invincibleTimer: INVINCIBILITY_DURATION, // Start with brief invincibility
   }),
   
   endGame: () => {
-    const { score, highScore, maxCombo, comboCount } = get();
+    const { score, highScore, maxCombo, comboCount, invincibleTimer } = get();
+    // Don't end game during invincibility
+    if (invincibleTimer > 0) return;
     set({
       gameState: 'gameOver',
       highScore: Math.max(score, highScore),
@@ -219,6 +278,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     timeOfDay: 'day',
     weatherTransition: 0,
     timeTransition: 0,
+    currentBiome: 'ice_plains',
+    biomeTransitionProgress: 0,
     lastMilestone: 0,
     showMilestone: false,
     milestoneText: '',
@@ -229,6 +290,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     memoryText: '',
     isSlowMotion: false,
     slowMotionTimer: 0,
+    invincibleTimer: INVINCIBILITY_DURATION,
   }),
   
   goToTitle: () => set({
@@ -246,6 +308,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     comboTimer: 0,
     weather: 'clear',
     timeOfDay: 'day',
+    currentBiome: 'ice_plains',
     showThought: false,
     showMemory: false,
   }),
@@ -351,7 +414,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { timeTransition, weatherTransition, gameState } = get();
     if (gameState !== 'playing') return;
     
-    // Update time cycle
     const newTimeTransition = timeTransition + delta;
     const timePhase = (newTimeTransition / TIME_CYCLE_DURATION) % 1;
     
@@ -361,7 +423,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     else if (timePhase < 0.75) newTimeOfDay = 'dusk';
     else newTimeOfDay = 'night';
     
-    // Update weather randomly
     const newWeatherTransition = weatherTransition + delta;
     let newWeather = get().weather;
     
@@ -380,6 +441,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
   
+  updateBiome: () => {
+    const { distance } = get();
+    const transition = getBiomeTransition(distance);
+    set({
+      currentBiome: transition.current,
+      biomeTransitionProgress: transition.progress,
+    });
+  },
+  
   // Abilities
   updateAbilities: (delta) => {
     const { isBellySliding, bellySlideEnergy, bellySlideCooldown, speedBoostTimer, speed, baseSpeed } = get();
@@ -389,31 +459,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let newSpeedBoost = speedBoostTimer;
     let newSpeed = speed;
     
-    // Belly slide energy drain
     if (isBellySliding) {
       newEnergy = Math.max(0, bellySlideEnergy - delta);
       if (newEnergy <= 0) {
         get().endBellySlide();
       }
-      newSpeed = Math.min(speed + 0.1, 0.6); // Speed boost during belly slide
+      newSpeed = Math.min(speed + 0.1, 0.6);
     } else {
-      // Regenerate energy when not sliding
       if (bellySlideCooldown <= 0) {
         newEnergy = Math.min(BELLY_SLIDE_MAX, bellySlideEnergy + delta * 0.5);
       }
     }
     
-    // Cooldown reduction
     if (bellySlideCooldown > 0) {
       newCooldown = Math.max(0, bellySlideCooldown - delta);
     }
     
-    // Speed boost from combo
     if (speedBoostTimer > 0) {
       newSpeedBoost = speedBoostTimer - delta;
       newSpeed = Math.min(baseSpeed + 0.15, 0.6);
     } else if (!isBellySliding) {
-      newSpeed = baseSpeed + (get().distance / 5000) * 0.1; // Gradual speed increase
+      newSpeed = baseSpeed + (get().distance / 5000) * 0.1;
     }
     
     set({
@@ -424,10 +490,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
   
+  updateInvincibility: (delta) => {
+    const { invincibleTimer } = get();
+    if (invincibleTimer > 0) {
+      set({ invincibleTimer: Math.max(0, invincibleTimer - delta) });
+    }
+  },
+  
   // Milestones
   checkMilestone: () => {
-    const { distance, lastMilestone } = get();
+    const { distance, lastMilestone, currentBiome } = get();
     const currentMilestone = Math.floor(distance / MILESTONE_INTERVAL) * MILESTONE_INTERVAL;
+    
+    // Check for biome transitions
+    const biomeMessages: Record<BiomeType, { distance: number; message: string }> = {
+      ice_plains: { distance: 0, message: '' },
+      ocean: { distance: 2000, message: 'Entering Ocean Waters...' },
+      cliffs: { distance: 4000, message: 'Ascending Coastal Cliffs...' },
+      mountain: { distance: 6000, message: 'The Mountain Ascent Begins...' },
+      peaks: { distance: 8000, message: 'Treacherous Peaks Ahead...' },
+    };
+    
+    const biomeInfo = biomeMessages[currentBiome];
+    if (biomeInfo.distance > 0 && distance >= biomeInfo.distance && distance < biomeInfo.distance + 100 && lastMilestone < biomeInfo.distance) {
+      set({
+        lastMilestone: biomeInfo.distance,
+        showMilestone: true,
+        milestoneText: biomeInfo.message,
+      });
+      setTimeout(() => get().hideMilestone(), 3000);
+      return;
+    }
     
     if (currentMilestone > lastMilestone && currentMilestone > 0) {
       set({
@@ -435,11 +528,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         showMilestone: true,
         milestoneText: `${currentMilestone}m`,
       });
-      
-      // Auto-hide after 2 seconds
-      setTimeout(() => {
-        get().hideMilestone();
-      }, 2000);
+      setTimeout(() => get().hideMilestone(), 2000);
     }
   },
   
@@ -452,11 +541,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       thoughtText: text,
       thoughtsShown: get().thoughtsShown + 1,
     });
-    
-    // Auto-hide after 4 seconds
-    setTimeout(() => {
-      get().hideThought();
-    }, 4000);
+    setTimeout(() => get().hideThought(), 4000);
   },
   
   hideThought: () => set({ showThought: false }),
@@ -466,11 +551,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       showMemory: true,
       memoryText: text,
     });
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      get().hideMemory();
-    }, 5000);
+    setTimeout(() => get().hideMemory(), 5000);
   },
   
   hideMemory: () => set({ showMemory: false }),
@@ -490,4 +571,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
   },
+  
+  // Debug
+  toggleDebugCollisions: () => set((state) => ({ debugCollisions: !state.debugCollisions })),
 }));
