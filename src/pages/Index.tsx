@@ -1,12 +1,25 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { GameScene } from '@/components/game/GameScene';
+import { TitleScreen } from '@/components/game/TitleScreen';
+import { GameUI } from '@/components/game/GameUI';
+import { GameOver } from '@/components/game/GameOver';
+import { useGameStore } from '@/store/gameStore';
+import { useControls } from '@/hooks/useControls';
 
 const Index = () => {
+  const { gameState } = useGameStore();
+  
+  // Initialize controls
+  useControls();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="relative w-full h-screen overflow-hidden winter-gradient">
+      {/* 3D Scene */}
+      <GameScene />
+      
+      {/* UI Overlays */}
+      {gameState === 'title' && <TitleScreen />}
+      {gameState === 'playing' && <GameUI />}
+      {gameState === 'gameOver' && <GameOver />}
     </div>
   );
 };
